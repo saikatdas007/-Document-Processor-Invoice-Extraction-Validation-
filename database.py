@@ -119,7 +119,7 @@ def keyword_search(customer=None, invoice_number=None, status=None):
                 continue
             if invoice_number and invoice_number != str(data.get("invoice_number", "")):
                 continue
-            if status and status != doc.validation_status:
+            if status and status != doc.status:
                 continue
             
             filtered.append({

@@ -1,5 +1,9 @@
 {
+  "scripts": {
+    "dev": "npm --prefix frontend run dev"
+  },
   "dependencies": {
+    "lucide-react": "^1.66.0",
     "recharts": "^3.10.1"
   }
 }

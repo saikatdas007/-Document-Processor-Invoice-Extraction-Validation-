@@ -1,8 +1,30 @@
 import os
+import re
 import pandas as pd
 import pdfplumber
 from PIL import Image
 import pytesseract
+from validator import extract_invoice_fields
+
+def extract_document_data(text):
+    """Extract structured invoice fields from text without requiring an API."""
+    if not isinstance(text, str) or not text.strip():
+        return {"error": "Document text is empty."}
+
+    extracted_data = extract_invoice_fields(text)
+    if extracted_data.get("total") is None:
+        total_match = re.search(
+            r"(?:grand\s+total|total|balance\s+due)\s*:?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)",
+            text,
+            re.IGNORECASE,
+        )
+        if total_match:
+            extracted_data["total"] = float(total_match.group(1).replace(",", ""))
+
+    if extracted_data.get("total") is None:
+        return {"error": "Could not extract an invoice total."}
+
+    return extracted_data
 
 def process_pdf(file_path):
     """Extracts text from digital PDFs, falls back to OCR if text is empty."""
@@ -34,7 +56,7 @@ def process_image(file_path):
 def process_spreadsheet(file_path):
     """Parses structured spreadsheet data (XLSX, XLS, CSV) across all sheets."""
     try:
-        if file_path.endswith('.csv'):
+        if os.path.splitext(file_path)[1].lower() == '.csv':
             df = pd.read_csv(file_path)
             return {"Sheet1": df}
         else:
@@ -73,8 +95,13 @@ def batch_process_folder(folder_path):
             else:
                 data = process_spreadsheet(file_path)
                 
+            if isinstance(data, dict):
+                has_data = any(not sheet.empty for sheet in data.values())
+            else:
+                has_data = isinstance(data, str) and bool(data.strip())
+
             # Verification & Display: Check if data was extracted and print preview
-            if data is not None and len(str(data)) > 0:
+            if has_data:
                 print(f" -> Success! Extracted data from {filename}")
                 print(f"--- PREVIEW OF {filename} ---")
                 

@@ -1,5 +1,6 @@
 import os
 import json
+import math
 import re
 import pdfplumber
 
@@ -32,17 +33,27 @@ def extract_invoice_fields(text):
         extracted_data["supplier_name"] = "SuperStore"
         
     # 4. Customer Name
-    if "Aaron Bergman" in text:
-        extracted_data["customer_name"] = "Aaron Bergman"
-    elif "Aaron Hawkins" in text:
-        extracted_data["customer_name"] = "Aaron Hawkins"
+    customer_match = re.search(
+        r"^\s*Customer\s+Name:\s*(.+?)\s*$", text, re.IGNORECASE | re.MULTILINE
+    )
+    if not customer_match:
+        customer_match = re.search(
+            r"^\s*(?:Bill\s*To|Billed\s*To|Customer|Invoice\s*To)\s*:\s*"
+            r"(?!Ship\s*To\b)([^:\n]+)",
+            text,
+            re.IGNORECASE | re.MULTILINE,
+        )
+    if customer_match:
+        customer_name = customer_match.group(1).strip()
+        if customer_name.casefold() not in {"ship to", "bill to", "balance due"}:
+            extracted_data["customer_name"] = customer_name
 
     # 5. Financial Totals
     subtotal_match = re.search(r'Subtotal:\s*\$?([\d,\.]+)', text)
     if subtotal_match:
         extracted_data["subtotal"] = float(subtotal_match.group(1).replace(',', ''))
         
-    total_match = re.search(r'(?:Total:|Balance Due:)\s*\$?([\d,\.]+)', text)
+    total_match = re.search(r'(?:Total|Balance Due)\s*:?\s*\$?([\d,\.]+)', text, re.IGNORECASE)
     if total_match:
         extracted_data["total"] = float(total_match.group(1).replace(',', ''))
         
@@ -55,6 +66,32 @@ def extract_invoice_fields(text):
         })
 
     return extracted_data
+
+def validate_document_payload(payload):
+    """Validate the required invoice number and total amount fields."""
+    errors = []
+
+    if not isinstance(payload, dict):
+        return False, ["Payload must be an object."]
+
+    invoice_number = payload.get("invoice_number")
+    if not isinstance(invoice_number, str) or not invoice_number.strip():
+        errors.append("Invoice number is required.")
+
+    amount_key = "total_amount" if "total_amount" in payload else "total"
+    amount = payload.get(amount_key)
+    if amount is None:
+        errors.append("Total amount is required.")
+    else:
+        try:
+            numeric_amount = float(amount)
+        except (TypeError, ValueError):
+            errors.append("Total amount must be numeric.")
+        else:
+            if numeric_amount < 0:
+                errors.append("Total amount cannot be negative.")
+
+    return not errors, errors
 
 def validate_invoice(invoice_data):
     """
@@ -69,9 +106,24 @@ def validate_invoice(invoice_data):
         if invoice_data.get(field) is None or invoice_data.get(field) == "":
             issues.append(f"Missing mandatory field: {field}")
             
+    numeric_values = {}
+    for field in ("subtotal", "total"):
+        value = invoice_data.get(field)
+        if value is None or value == "":
+            continue
+        try:
+            numeric_value = float(value)
+        except (TypeError, ValueError):
+            issues.append(f"{field.replace('_', ' ').capitalize()} must be numeric.")
+            continue
+        if not math.isfinite(numeric_value):
+            issues.append(f"{field.replace('_', ' ').capitalize()} must be finite.")
+            continue
+        numeric_values[field] = numeric_value
+
     # Rule 2: Numeric Consistency Check
-    subtotal = invoice_data.get("subtotal")
-    total = invoice_data.get("total")
+    subtotal = numeric_values.get("subtotal")
+    total = numeric_values.get("total")
     if total is not None and subtotal is not None:
         if total <= 0 and subtotal > 0:
             issues.append("Suspicious total amount: Total is zero or negative while subtotal is positive.")

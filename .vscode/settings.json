@@ -1,0 +1,18 @@
+{
+  "files.exclude": {
+    "**/.env": true,
+    "**/.next": true,
+    "**/.pytest_cache": true,
+    "**/__pycache__": true,
+    "**/*.db": true,
+    "**/*.pyc": true,
+    "**/*.tsbuildinfo": true,
+    "**/node_modules": true,
+    "**/uploaded_docs": true,
+    "**/venv": true
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "package.json": "package-lock.json"
+  }
+}
