@@ -1,37 +1,40 @@
 # Document Processing Pipelines
 
-This document describes the current implementation and verification status of each supported file-type pipeline.
+This document describes the active Node.js implementation and distinguishes earlier Python-only measurements.
 
 ## PDF
 
-- The API upload flow uses `extract_text_from_file` in `extractor.py`.
-- Text-based PDFs are read with `pdfplumber`.
-- Scanned pages with no extractable text use Tesseract OCR.
+- The Node API uses PDF.js to read text from digital PDFs.
+- Scanned pages with no extractable text are rendered with PDF.js and passed to Tesseract.js.
 - The local evaluation script was run against the 1,007 PDFs in `1000+ PDF_Invoice_Folder`; see [evaluation-report.md](evaluation-report.md) for measured results and limitations.
+- Those corpus measurements are from the legacy Python evaluation path and do not certify the Node.js extractor.
 
 ## CSV
 
-- The API extraction path reads CSV file contents as text before invoice-field extraction.
+- The Node API reads CSV file contents as text before invoice-field extraction.
 - The standalone `processor.py` helper can also parse CSV rows into a pandas DataFrame.
 - CSV processing is covered by backend tests.
 
 ## Excel (XLS/XLSX)
 
-- The API extraction path reads workbook sheets with pandas and converts each sheet's contents to text for extraction.
+- The Node API reads XLS/XLSX workbook sheets and converts each sheet's contents to text for extraction.
 - The standalone `processor.py` helper can parse Excel workbooks into DataFrames.
 - Excel extraction behavior is covered by backend tests.
 
 ## Images (PNG/JPG/JPEG)
 
-- Both API upload routes accept PNG, JPG, and JPEG files and pass them through `extract_text_from_file` in `extractor.py`.
-- The extractor converts images to grayscale, normalizes contrast, and upscales smaller images by at most 4x before running Tesseract OCR and structured invoice extraction.
-- Tesseract must be installed on the API host. Set `TESSERACT_CMD` if its executable is not on `PATH` or the default Windows installation path.
-- The upload API returns HTTP 503 when Tesseract is unavailable and HTTP 422 when the image cannot be read, OCR fails, or no text is recognized; it does not treat the filename as extracted invoice content.
-- Automated route tests mock the OCR result to verify that both upload routes send recognized text into structured extraction. Preprocessing and OCR were also checked on five synthetic image conditions; see [test-results.md](test-results.md). This limited test set does not establish accuracy across all real-world images.
+- Both Node upload routes accept PNG, JPG, and JPEG files and preprocess them with Sharp (grayscale, contrast normalization, and upscaling of smaller images by at most 4x) before Tesseract.js OCR.
+- English OCR model data is fetched on first use; no system Tesseract executable is required. Allow outbound downloads or set `TESSERACT_CACHE_PATH` to persistent storage.
+- The semantic embedding model is also downloaded on first use; set `HF_HOME` to persistent storage to retain it across restarts.
+- The legacy Python API required a system Tesseract executable; that requirement does not apply to the Node API.
+- Node API route tests cover local text-file upload and auth protections; OCR behavior has not yet been independently benchmarked against the Python OCR test corpus.
 
 ## Relevant implementation files
 
-- API upload routes and supported extensions: `app.py`
-- PDF, image, text, CSV, and Excel text extraction: `extractor.py`
+- Node API upload routes and supported extensions: `backend/src/app.js`
+- Node PDF, image, text, CSV, and Excel text extraction: `backend/src/extractor.js`
+- Node invoice parser and validator: `backend/src/validation.js`
+- Legacy Python API upload routes and supported extensions: `app.py`
+- Legacy Python extraction helpers: `extractor.py`
 - Standalone image OCR, spreadsheet parsing, and batch processing helpers: `processor.py`
 - Automated pipeline regression tests: `test_app.py`

@@ -1,0 +1,35 @@
+{
+  "name": "document-processor-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.2",
+    "@napi-rs/canvas": "^0.1.80",
+    "argon2": "^0.41.1",
+    "better-sqlite3": "^12.2.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "openai": "^5.12.2",
+    "pdfjs-dist": "^4.10.38",
+    "sharp": "^0.35.5",
+    "swagger-ui-express": "^5.0.1",
+    "tesseract.js": "^6.0.1",
+    "@e965/xlsx": "^0.20.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4"
+  }
+}

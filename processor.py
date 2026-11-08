@@ -1,130 +1,260 @@
 import os
-import re
+import cv2
+import numpy as np
 import pandas as pd
 import pdfplumber
-from PIL import Image
 import pytesseract
-from validator import extract_invoice_fields
 
-def extract_document_data(text):
-    """Extract structured invoice fields from text without requiring an API."""
-    if not isinstance(text, str) or not text.strip():
-        return {"error": "Document text is empty."}
+from PIL import Image
 
-    extracted_data = extract_invoice_fields(text)
-    if extracted_data.get("total") is None:
-        total_match = re.search(
-            r"(?:grand\s+total|total|balance\s+due)\s*:?\s*\$?\s*([\d,]+(?:\.\d{1,2})?)",
-            text,
-            re.IGNORECASE,
-        )
-        if total_match:
-            extracted_data["total"] = float(total_match.group(1).replace(",", ""))
+# =====================================================
+# Tesseract Configuration
+# =====================================================
 
-    if extracted_data.get("total") is None:
-        return {"error": "Could not extract an invoice total."}
+pytesseract.pytesseract.tesseract_cmd = (
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+)
 
-    return extracted_data
+# =====================================================
+# PDF PROCESSING
+# =====================================================
 
 def process_pdf(file_path):
-    """Extracts text from digital PDFs, falls back to OCR if text is empty."""
+
+    """
+    Extract text from PDF.
+    Uses OCR when no text layer exists.
+    """
+
     extracted_text = ""
+
     try:
+
         with pdfplumber.open(file_path) as pdf:
-            for page_idx, page in enumerate(pdf.pages):
+
+            print(f"Pages Found: {len(pdf.pages)}")
+
+            for page_num, page in enumerate(pdf.pages):
+
+                print(f"\nReading Page {page_num + 1}")
+
                 text = page.extract_text()
+
+                # PDF already contains text
                 if text and text.strip():
-                    extracted_text += f"\n--- Page {page_idx + 1} ---\n" + text
+
+                    print("✅ Text layer found")
+
+                    extracted_text += (
+                        f"\n--- PAGE {page_num + 1} ---\n"
+                    )
+
+                    extracted_text += text
+
+                # Scanned PDF
                 else:
-                    # Fallback to OCR if the PDF page is an image/scanned
-                    pil_image = page.to_image(resolution=300).original
-                    ocr_text = pytesseract.image_to_string(pil_image)
-                    extracted_text += f"\n--- Page {page_idx + 1} (OCR) ---\n" + ocr_text
+
+                    print("⚠ No text layer. Running OCR...")
+
+                    image = page.to_image(
+                        resolution=300
+                    ).original
+
+                    # PIL -> NumPy
+                    img = np.array(image)
+
+                    # Convert to grayscale
+                    gray = cv2.cvtColor(
+                        img,
+                        cv2.COLOR_RGB2GRAY
+                    )
+
+                    # Noise reduction
+                    blurred = cv2.GaussianBlur(
+                        gray,
+                        (5, 5),
+                        0
+                    )
+
+                    # OTSU Threshold
+                    threshold = cv2.threshold(
+                        blurred,
+                        0,
+                        255,
+                        cv2.THRESH_BINARY + cv2.THRESH_OTSU
+                    )[1]
+
+                    # OCR
+                    ocr_text = pytesseract.image_to_string(
+                        threshold,
+                        config="--oem 3 --psm 6 -l eng"
+                    )
+
+                    extracted_text += (
+                        f"\n--- PAGE {page_num + 1} OCR ---\n"
+                    )
+
+                    extracted_text += ocr_text
+
     except Exception as e:
-        print(f"Error reading PDF {file_path}: {e}")
+
+        print(f"PDF Error: {e}")
+
     return extracted_text
 
+
+# =====================================================
+# IMAGE PROCESSING
+# =====================================================
+
 def process_image(file_path):
-    """Performs OCR on standalone image files (JPG, PNG, TIFF)."""
+
+    """
+    OCR for JPG, PNG, JPEG, TIFF files.
+    """
+
     try:
-        image = Image.open(file_path)
-        return pytesseract.image_to_string(image)
+
+        image = cv2.imread(file_path)
+
+        if image is None:
+
+            raise FileNotFoundError(
+                f"Cannot load image: {file_path}"
+            )
+
+        # Grayscale
+        gray = cv2.cvtColor(
+            image,
+            cv2.COLOR_BGR2GRAY
+        )
+
+        # Noise reduction
+        blurred = cv2.GaussianBlur(
+            gray,
+            (5, 5),
+            0
+        )
+
+        # OTSU Threshold
+        threshold = cv2.threshold(
+            blurred,
+            0,
+            255,
+            cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )[1]
+
+        # OCR
+        text = pytesseract.image_to_string(
+            threshold,
+            config="--oem 3 --psm 6 -l eng"
+        )
+
+        return text
+
     except Exception as e:
-        print(f"Error reading image {file_path}: {e}")
+
+        print(f"Image Error: {e}")
+
         return ""
 
+
+# =====================================================
+# SPREADSHEET PROCESSING
+# =====================================================
+
 def process_spreadsheet(file_path):
-    """Parses structured spreadsheet data (XLSX, XLS, CSV) across all sheets."""
+
+    """
+    Process CSV, XLS, XLSX files.
+    """
+
     try:
-        if os.path.splitext(file_path)[1].lower() == '.csv':
+
+        extension = os.path.splitext(
+            file_path
+        )[1].lower()
+
+        if extension == ".csv":
+
             df = pd.read_csv(file_path)
-            return {"Sheet1": df}
-        else:
-            return pd.read_excel(file_path, sheet_name=None)
+
+            return {
+                "Sheet1": df
+            }
+
+        return pd.read_excel(
+            file_path,
+            sheet_name=None
+        )
+
     except Exception as e:
-        print(f"Error parsing spreadsheet {file_path}: {e}")
+
+        print(f"Spreadsheet Error: {e}")
+
         return {}
 
-def batch_process_folder(folder_path):
-    """Scans a folder and automatically processes all supported invoice files."""
-    if not os.path.exists(folder_path):
-        print(f"Folder not found: {folder_path}")
-        return
 
-    print(f"Scanning folder: {folder_path}\n" + "="*45)
-    
-    files = os.listdir(folder_path)
-    success_count = 0
+# =====================================================
+# FILE ROUTER
+# =====================================================
 
-    for filename in files:
-        file_path = os.path.join(folder_path, filename)
-        
-        # Skip subdirectories
-        if os.path.isdir(file_path):
-            continue
-            
-        ext = filename.lower().split('.')[-1]
-        
-        if ext in ['pdf', 'jpg', 'jpeg', 'png', 'tiff', 'xlsx', 'xls', 'csv']:
-            print(f"\n[Processing] {filename}")
-            
-            if ext == 'pdf':
-                data = process_pdf(file_path)
-            elif ext in ['jpg', 'jpeg', 'png', 'tiff']:
-                data = process_image(file_path)
-            else:
-                data = process_spreadsheet(file_path)
-                
-            if isinstance(data, dict):
-                has_data = any(not sheet.empty for sheet in data.values())
-            else:
-                has_data = isinstance(data, str) and bool(data.strip())
+def process_file(file_path):
 
-            # Verification & Display: Check if data was extracted and print preview
-            if has_data:
-                print(f" -> Success! Extracted data from {filename}")
-                print(f"--- PREVIEW OF {filename} ---")
-                
-                if isinstance(data, dict):
-                    # For spreadsheets (CSV/Excel dictionaries containing DataFrames)
-                    for sheet_name, df in data.items():
-                        print(f"Sheet: {sheet_name}")
-                        print(df.head(3)) # Prints first 3 rows of the dataframe
-                else:
-                    # For PDFs and Images (plain text strings)
-                    print(str(data)[:400] + "...\n[Content truncated for display]")
-                
-                print("-" * 45)
-                success_count += 1
-            else:
-                print(f" -> Warning: No data extracted or file is empty.")
-        else:
-            continue
+    """
+    Detect file type automatically.
+    """
 
-    print("\n" + "="*45)
-    print(f"Batch processing complete. Successfully processed {success_count} files.")
+    extension = os.path.splitext(
+        file_path
+    )[1].lower()
+
+    if extension == ".pdf":
+
+        return process_pdf(
+            file_path
+        )
+
+    elif extension in [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".tiff"
+    ]:
+
+        return process_image(
+            file_path
+        )
+
+    elif extension in [
+        ".csv",
+        ".xls",
+        ".xlsx"
+    ]:
+
+        return process_spreadsheet(
+            file_path
+        )
+
+    else:
+
+        raise ValueError(
+            f"Unsupported file type: {extension}"
+        )
+
+
+# =====================================================
+# TEST
+# =====================================================
 
 if __name__ == "__main__":
-    # Target folder set to current workspace directory "."
-    target_folder = "." 
-    batch_process_folder(target_folder)
+
+    file_path = "invoice_Aaron Bergman_36258.pdf"
+
+    text = process_file(file_path)
+
+    print("\n" + "=" * 60)
+    print("EXTRACTED TEXT")
+    print("=" * 60)
+
+    print(text[:5000])

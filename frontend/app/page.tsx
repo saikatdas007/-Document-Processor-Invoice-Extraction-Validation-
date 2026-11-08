@@ -3,7 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000';
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'
+).replace(/\/+$/, '');
 
 type AuthSession = {
   email: string;
@@ -382,6 +384,7 @@ export default function Dashboard() {
   const failedDocumentsCount = documents.filter(
     (document) => document.status?.toLowerCase() === 'failed',
   ).length;
+  const accountInitial = session?.email.slice(0, 1).toUpperCase() ?? 'A';
 
   if (sessionLoading) {
     return (
@@ -618,42 +621,95 @@ export default function Dashboard() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', background: '#020817', color: '#f8fafc', fontFamily: 'sans-serif', padding: 'clamp(16px, 4vw, 32px)' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 20, marginBottom: 28, flexWrap: 'wrap' }}>
+    <main className="dashboard-app" id="overview">
+      <aside className="dashboard-sidebar">
+        <Link className="dashboard-brand" href="/" aria-label="Document Intelligence home">
+          <span className="dashboard-brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M7 3.75h7l4 4v12.5H7a2 2 0 0 1-2-2v-12.5a2 2 0 0 1 2-2Z" />
+              <path d="M14 3.75v4h4M8.5 12h7M8.5 15.5h7" />
+            </svg>
+          </span>
+          <span className="dashboard-brand-name">folio<span>flow</span></span>
+        </Link>
+
+        <div className="dashboard-workspace-label">WORKSPACE</div>
+        <nav className="dashboard-nav" aria-label="Dashboard navigation">
+          <a className="dashboard-nav-link is-active" href="#overview">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="3.5" width="7" height="7" rx="1.5" /><rect x="3.5" y="13.5" width="7" height="7" rx="1.5" /><rect x="13.5" y="13.5" width="7" height="7" rx="1.5" /></svg>
+            <span>Overview</span>
+          </a>
+          <a className="dashboard-nav-link" href="#documents">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h7" /></svg>
+            <span>Documents</span>
+            <span className="dashboard-nav-count">{documents.length}</span>
+          </a>
+          <a className="dashboard-nav-link" href="#search">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 4.5 4.5" /></svg>
+            <span>Smart search</span>
+          </a>
+          <a className="dashboard-nav-link" href="#activity">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 19.5h16M6.5 16v-4M12 16V5.5M17.5 16v-7" /></svg>
+            <span>Analytics</span>
+          </a>
+        </nav>
+
+        <a className="dashboard-sidebar-upload" href="#upload">
+          <span aria-hidden="true">+</span> Upload a document
+        </a>
+
+        <div className="dashboard-sidebar-footer">
+          <div className="dashboard-security-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5.5 5.7v5c0 4 2.7 7.5 6.5 8.8 3.8-1.3 6.5-4.8 6.5-8.8v-5L12 3Z" /><path d="m9 12 2 2 4-4" /></svg>
+          </div>
+          <strong>Your workspace is private</strong>
+          <span>Documents are protected by secure access controls.</span>
+        </div>
+      </aside>
+
+      <div className="dashboard-shell">
+        <header className="dashboard-header">
           <div>
-            <h1 style={{ margin: 0, fontSize: 32, fontWeight: 800 }}>AI-Powered Document Intelligence</h1>
-            <p style={{ margin: '8px 0 0', color: '#94a3b8', fontSize: 14 }}>Real-time intelligence and document workflows</p>
+            <div className="dashboard-breadcrumb">Workspace <span>/</span> Overview</div>
+            <h1>Document overview</h1>
+            <p>Your invoices, activity, and insights in one place.</p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 700 }}>{session.email}</div>
-              <div style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase' }}>{session.role}</div>
+          <div className="dashboard-account">
+            <div className="dashboard-account-avatar" aria-hidden="true">{accountInitial}</div>
+            <div className="dashboard-account-copy">
+              <strong>{session.email}</strong>
+              <span>{session.role}</span>
             </div>
-            <button onClick={handleLogout} style={{ border: '1px solid #334155', background: '#0f172a', color: '#e2e8f0', borderRadius: 10, padding: '10px 14px', fontWeight: 600, cursor: 'pointer' }}>
-              Sign out
+            <button className="dashboard-signout" onClick={handleLogout} aria-label="Sign out">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10M14 8l4 4-4 4M18 12H9" /></svg>
+              <span>Sign out</span>
             </button>
           </div>
         </header>
 
         {logoutError && (
-          <div role="alert" style={{ marginBottom: 18, color: '#fca5a5', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 10, padding: '11px 13px' }}>
+          <div className="dashboard-error" role="alert">
             {logoutError}
           </div>
         )}
 
-        <section style={{ background: 'linear-gradient(145deg, #111827, #0b1425)', borderRadius: 18, border: '1px solid #263449', padding: 24, marginBottom: 24, boxShadow: '0 18px 45px rgba(2, 8, 23, 0.22)' }}>
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-              <h2 style={{ margin: 0, fontSize: 22 }}>Find an invoice</h2>
-              <span style={{ border: '1px solid #1e3a5f', borderRadius: 999, padding: '3px 8px', color: '#93c5fd', background: 'rgba(37,99,235,0.12)', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' }}>SEMANTIC SEARCH</span>
+        <section className="dashboard-panel semantic-panel" id="search">
+          <div className="semantic-heading">
+            <div className="semantic-title-row">
+              <span className="semantic-heading-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.5 13.9 9l5.6 1.9-5.6 1.9L12 18.5l-1.9-5.7-5.6-1.9L10.1 9 12 3.5ZM19 15.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1 1-2.5Z" /></svg>
+              </span>
+              <div className="semantic-title-copy">
+              <h2>Find an invoice</h2>
+              <span className="semantic-badge">AI POWERED</span>
+              </div>
             </div>
-            <p style={{ margin: 0, color: '#94a3b8', fontSize: 14 }}>
+            <p className="semantic-description">
               Search by customer name, invoice number, supplier, or billing details.
             </p>
           </div>
-          <form onSubmit={handleSemanticSearch} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <form className="semantic-form" onSubmit={handleSemanticSearch}>
             <input
               value={semanticQuery}
               onChange={(event) => {
@@ -664,7 +720,6 @@ export default function Dashboard() {
               }}
               aria-label="Search invoices"
               placeholder="Try a customer name, e.g. Aaron Hawkins"
-              style={{ flex: 1, minWidth: 240, padding: '13px 15px', borderRadius: 11, border: '1px solid #334155', background: '#020817', color: '#f8fafc', outlineColor: '#60a5fa', fontSize: 14 }}
             />
             {semanticQuery && (
               <button
@@ -675,64 +730,64 @@ export default function Dashboard() {
                   setSemanticError('');
                   setSemanticHasSearched(false);
                 }}
-                style={{ padding: '12px 14px', background: '#0f172a', color: '#cbd5e1', border: '1px solid #334155', borderRadius: 11, fontWeight: 600, cursor: 'pointer' }}
+                className="dashboard-button dashboard-button-quiet"
               >
                 Clear
               </button>
             )}
-            <button type="submit" disabled={semanticLoading || !semanticQuery.trim()} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 9, minWidth: 112, padding: '12px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 11, fontWeight: 700, cursor: semanticLoading || !semanticQuery.trim() ? 'not-allowed' : 'pointer', opacity: semanticLoading || !semanticQuery.trim() ? 0.7 : 1 }}>
+            <button className="dashboard-button dashboard-button-primary" type="submit" disabled={semanticLoading || !semanticQuery.trim()}>
               {semanticLoading && <span className="search-spinner" aria-hidden="true" />}
               {semanticLoading ? 'Searching' : 'Search'}
             </button>
           </form>
 
           {semanticError && (
-            <div role="alert" style={{ marginTop: 14, color: '#fca5a5', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(248,113,113,0.18)', borderRadius: 10, padding: '11px 13px' }}>
+            <div className="dashboard-error" role="alert">
               {semanticError}
             </div>
           )}
 
           {semanticLoading && (
-            <div role="status" aria-live="polite" style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 14 }}>
+            <div className="semantic-loading" role="status" aria-live="polite">
               <span className="search-spinner search-spinner-muted" aria-hidden="true" />
               Looking through your invoices…
             </div>
           )}
 
           {semanticResults.length > 0 && (
-            <div style={{ marginTop: 22 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                <h3 style={{ margin: 0, fontSize: 15, color: '#e2e8f0' }}>
+            <div className="semantic-results">
+              <div className="semantic-results-heading">
+                <h3>
                   {semanticResults.length} {semanticResults.length === 1 ? 'result' : 'results'}
                 </h3>
-                <span style={{ color: '#64748b', fontSize: 12 }}>Best matches for “{semanticQuery}”</span>
+                <span>Best matches for “{semanticQuery}”</span>
               </div>
-              <div style={{ display: 'grid', gap: 10 }}>
+              <div className="semantic-result-list">
               {semanticResults.map((result) => {
                 const customerMatch = customerNameMatchesQuery(result.customer_name, semanticQuery);
                 return (
-                <div key={result.doc_id} style={{ background: '#0b1425', border: customerMatch ? '1px solid #2563eb' : '1px solid #1f2937', borderRadius: 13, padding: 15, boxShadow: customerMatch ? 'inset 3px 0 #3b82f6' : undefined }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+                <div key={result.doc_id} className={`semantic-result${customerMatch ? ' is-customer-match' : ''}`}>
+                  <div className="semantic-result-top">
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, flexWrap: 'wrap', fontWeight: 700 }}>
+                      <div className="semantic-result-name">
                         {result.customer_name || 'Unknown customer'}
                         {customerMatch && (
-                          <span style={{ borderRadius: 999, padding: '3px 8px', background: 'rgba(37,99,235,0.16)', color: '#93c5fd', fontSize: 11, fontWeight: 700 }}>
+                          <span className="semantic-match-badge">
                             Customer match
                           </span>
                         )}
                       </div>
-                      <div style={{ marginTop: 4, color: '#94a3b8', fontSize: 13 }}>
+                      <div className="semantic-result-invoice">
                         {result.invoice_number ? `Invoice ${result.invoice_number}` : 'No invoice number'}
                       </div>
                     </div>
-                    <div style={{ color: '#93c5fd', fontSize: 13, fontWeight: 700 }}>
+                    <div className="semantic-result-score">
                       {Math.max(0, Math.min(100, Number(result.score) * 100)).toFixed(1)}% similarity
                     </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12, color: '#cbd5e1', fontSize: 13 }}>
+                  <div className="semantic-result-meta">
                     <span>Total: {result.total === null ? '—' : formatCurrency(Number(result.total))}</span>
-                    <span aria-hidden="true" style={{ color: '#475569' }}>·</span>
+                    <span aria-hidden="true">·</span>
                     <span>Status: {result.validation_status || 'Unknown'}</span>
                   </div>
                 </div>
@@ -743,80 +798,104 @@ export default function Dashboard() {
           )}
 
           {!semanticLoading && !semanticError && semanticHasSearched && semanticResults.length === 0 && (
-            <div role="status" style={{ marginTop: 18, border: '1px dashed #334155', borderRadius: 12, padding: '20px 16px', textAlign: 'center' }}>
-              <div style={{ color: '#e2e8f0', fontWeight: 700 }}>No matching invoices found</div>
-              <div style={{ marginTop: 5, color: '#94a3b8', fontSize: 13 }}>Try another customer name, invoice number, or search phrase.</div>
+            <div className="dashboard-empty" role="status">
+              <div>No matching invoices found</div>
+              <div>Try another customer name, invoice number, or search phrase.</div>
             </div>
           )}
 
           {!semanticLoading && !semanticError && !semanticHasSearched && (
-            <div style={{ marginTop: 16, color: '#64748b', fontSize: 12 }}>
+            <div className="semantic-tip">
               Tip: customer name matches are highlighted at the top of your results.
             </div>
           )}
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, marginBottom: 26 }}>
+        <section className="dashboard-metrics" aria-label="Processing metrics">
           {[
             { label: 'Total Processed', value: analytics.total_processed, accent: '#60a5fa' },
             { label: 'Success Rate', value: `${analytics.success_rate}%`, accent: '#34d399' },
             { label: 'Failed Extractions', value: analytics.failed_count, accent: '#f87171' },
             { label: 'Avg Latency', value: analytics.avg_latency, accent: '#a78bfa' },
           ].filter((card) => !failedHistoryCleared || card.label !== 'Failed Extractions').map((card) => (
-            <div key={card.label} style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 18, padding: 22 }}>
-              <div style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>{card.label}</div>
-              <div style={{ fontSize: 36, fontWeight: 800, color: card.accent }}>{card.value}</div>
+            <div key={card.label} className="dashboard-metric-card">
+              <div className="metric-card-top">
+                <span>{card.label}</span>
+                <span className={`metric-icon ${card.label === 'Success Rate' ? 'metric-icon-green' : card.label === 'Failed Extractions' ? 'metric-icon-orange' : card.label === 'Avg Latency' ? 'metric-icon-violet' : 'metric-icon-blue'}`} aria-hidden="true">
+                  {card.label === 'Success Rate' ? '✓' : card.label === 'Failed Extractions' ? '!' : card.label === 'Avg Latency' ? '◷' : '↗'}
+                </span>
+              </div>
+              <div className="metric-card-value">{card.value}</div>
+              <div className="metric-card-caption">{card.label === 'Failed Extractions' ? 'Need a closer look' : card.label === 'Success Rate' ? 'Invoices validated' : card.label === 'Avg Latency' ? 'Average processing time' : 'Across your workspace'}</div>
             </div>
           ))}
         </section>
 
-        <section style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 18, padding: 22, marginBottom: 26 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 22 }}>Weekly Processing Volume</h2>
-            <span style={{ color: '#94a3b8', fontSize: 13 }}>Last 7 days · {weeklyTotal} {weeklyTotal === 1 ? 'document' : 'documents'}</span>
+        <section className="dashboard-panel activity-panel" id="activity">
+          <div className="panel-heading-row">
+            <div>
+              <span className="panel-eyebrow">YOUR WORKSPACE</span>
+              <h2>Processing activity</h2>
+            </div>
+            <span className="activity-period">Last 7 days <i /> {weeklyTotal} {weeklyTotal === 1 ? 'document' : 'documents'}</span>
           </div>
           {weeklyTotal === 0 && (
-            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+            <p className="activity-empty">
               No documents processed in the last 7 days.
             </p>
           )}
-          <div style={{ display: 'flex', alignItems: 'end', gap: 12, minHeight: 180, paddingTop: 6 }}>
+          <div className="activity-chart">
             {analytics.weekly_volume.map((entry) => (
-              <div key={entry.date} title={`${entry.date}: ${entry.count} processed`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-                <div aria-label={`${entry.date}: ${entry.count} documents processed`} style={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'end', alignItems: 'center', minHeight: 140 }}>
-                  <span style={{ color: '#cbd5e1', fontSize: 12, marginBottom: 5 }}>{entry.count}</span>
-                  <div style={{ width: '100%', maxWidth: 36, height: entry.count === 0 ? 2 : `${Math.max(8, (entry.count / weeklyMaximum) * 120)}px`, background: entry.count === 0 ? '#334155' : 'linear-gradient(180deg, #60a5fa, #2563eb)', borderRadius: '8px 8px 0 0' }} />
+              <div key={entry.date} title={`${entry.date}: ${entry.count} processed`} className="activity-day">
+                <div className="activity-bar-track" aria-label={`${entry.date}: ${entry.count} documents processed`}>
+                  <span>{entry.count}</span>
+                  <div className="activity-bar" style={{ height: entry.count === 0 ? 2 : `${Math.max(8, (entry.count / weeklyMaximum) * 120)}px` }} />
                 </div>
-                <div style={{ color: '#94a3b8', fontSize: 12 }}>{entry.day}</div>
+                <div className="activity-day-label">{entry.day}</div>
               </div>
             ))}
           </div>
         </section>
 
-        <section style={{ display: 'grid', gridTemplateColumns: 'minmax(260px, 360px) minmax(0, 1fr)', gap: 18 }}>
-          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 18, padding: 22 }}>
-            <h2 style={{ margin: '0 0 16px', fontSize: 22 }}>Upload Document</h2>
-            <label style={{ display: 'block', border: '1px dashed #334155', borderRadius: 12, background: '#020817', padding: 22, textAlign: 'center', color: '#cbd5e1', cursor: 'pointer' }}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>{selectedFile ? selectedFile.name : 'Choose a file to process'}</div>
-              <div style={{ fontSize: 12, color: '#94a3b8' }}>PDF, TXT, CSV, XLS, XLSX, PNG, JPG, JPEG</div>
-              <input type="file" accept=".pdf,.txt,.csv,.xls,.xlsx,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} />
+        <section className="dashboard-operations-grid">
+          <div className="dashboard-panel upload-panel" id="upload">
+            <div className="panel-heading-row">
+              <div>
+                <span className="panel-eyebrow">GET STARTED</span>
+                <h2>Upload invoice</h2>
+              </div>
+              <span className="upload-panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v4A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-4" /></svg>
+              </span>
+            </div>
+            <label className="upload-dropzone">
+              <span className="upload-dropzone-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v4A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-4" /></svg>
+              </span>
+              <strong>{selectedFile ? selectedFile.name : 'Choose a file to process'}</strong>
+              <span>or click to browse your files</span>
+              <small>PDF, TXT, CSV, XLS, XLSX, PNG, JPG, JPEG</small>
+              <input type="file" accept=".pdf,.txt,.csv,.xls,.xlsx,.png,.jpg,.jpeg" onChange={(event) => setSelectedFile(event.target.files?.[0] || null)} />
             </label>
 
-            <button onClick={handleUpload} disabled={uploadLoading || !selectedFile} style={{ width: '100%', marginTop: 16, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 10, padding: '12px 18px', fontWeight: 700, cursor: !uploadLoading && !!selectedFile ? 'pointer' : 'not-allowed' }}>
-              {uploadLoading ? 'Processing...' : 'Process Document'}
+            <button className="dashboard-button dashboard-button-primary upload-submit" onClick={handleUpload} disabled={uploadLoading || !selectedFile}>
+              {uploadLoading ? 'Processing invoice…' : 'Process invoice'}
             </button>
 
             {uploadStatus && (
-              <div style={{ marginTop: 12, color: '#93c5fd', background: 'rgba(59,130,246,0.08)', borderRadius: 10, padding: '10px 12px', fontSize: 14 }}>
+              <div className="upload-status" role="status">
                 {uploadStatus}
               </div>
             )}
           </div>
 
-          <div style={{ background: '#111827', border: '1px solid #1f2937', borderRadius: 18, padding: 22 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
-              <h2 style={{ margin: 0, fontSize: 22 }}>Recent Documents</h2>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div className="dashboard-panel documents-panel" id="documents">
+            <div className="documents-panel-heading">
+              <div>
+                <span className="panel-eyebrow">YOUR FILES</span>
+                <h2>Recent documents</h2>
+              </div>
+              <div className="documents-actions">
                 {failedDocumentsCount > 0 && (
                   <button
                     onClick={() =>
@@ -830,7 +909,7 @@ export default function Dashboard() {
                       }
                     }
                     title="Hide failed entries and their count from this dashboard view. Stored documents are not deleted."
-                    style={{ background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', borderRadius: 10, padding: '10px 12px', fontWeight: 600, cursor: 'pointer' }}
+                    className="dashboard-button dashboard-button-quiet"
                   >
                     Clear failed ({failedDocumentsCount})
                   </button>
@@ -839,7 +918,7 @@ export default function Dashboard() {
                   <button
                     onClick={() => setDocuments([])}
                     title="Clear the list from this dashboard view. Stored documents are not deleted."
-                    style={{ background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', borderRadius: 10, padding: '10px 12px', fontWeight: 600, cursor: 'pointer' }}
+                    className="dashboard-button dashboard-button-quiet"
                   >
                     Clear list
                   </button>
@@ -848,17 +927,23 @@ export default function Dashboard() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Filter by customer..."
-                  style={{ minWidth: 180, padding: '10px 12px', borderRadius: 10, border: '1px solid #334155', background: '#020817', color: '#f8fafc' }}
+                  aria-label="Filter documents by customer"
                 />
-                <button onClick={handleSearch} style={{ background: '#0f172a', color: '#f8fafc', border: '1px solid #334155', borderRadius: 10, padding: '10px 12px', fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={handleSearch} className="dashboard-button dashboard-button-quiet">
                   Search
                 </button>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gap: 12 }}>
+            <div className="documents-list">
               {documents.length === 0 ? (
-                <div style={{ padding: 18, color: '#94a3b8', border: '1px dashed #334155', borderRadius: 12 }}>No documents found.</div>
+                <div className="dashboard-empty">
+                  <span className="empty-doc-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h4" /></svg>
+                  </span>
+                  <strong>No documents yet</strong>
+                  <span>Upload your first invoice to see it here.</span>
+                </div>
               ) : (
                 documents.map((doc) => {
                   const customer = doc.structured_data?.customer_name || doc.customer_name || 'Unknown customer';
@@ -867,18 +952,19 @@ export default function Dashboard() {
                   const status = (doc.validation_status || doc.status || 'UNKNOWN').toString().toUpperCase();
 
                   return (
-                    <div key={doc.doc_id || customer} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, background: '#0f172a', border: '1px solid #1f2937', borderRadius: 12, padding: '12px 14px', flexWrap: 'wrap' }}>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{invoiceNumber ? `${customer} • ${invoiceNumber}` : customer}</div>
-                        <div style={{ color: '#94a3b8', fontSize: 12 }}>{status}</div>
+                    <div key={doc.doc_id || customer} className="document-row">
+                      <span className="document-file-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none"><path d="M7 3.5h7l4 4v13H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" /><path d="M14 3.5v4h4M8.5 12h7M8.5 15.5h4" /></svg>
+                      </span>
+                      <div className="document-row-copy">
+                        <strong>{invoiceNumber ? `${customer} · ${invoiceNumber}` : customer}</strong>
+                        <span>{status}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                        <span style={{ fontWeight: 700, color: '#93c5fd' }}>{formatCurrency(Number(total ?? 0))}</span>
-                        <span style={{ padding: '5px 8px', borderRadius: 999, background: status === 'VALID' ? 'rgba(52,211,153,0.12)' : 'rgba(248,113,113,0.12)', color: status === 'VALID' ? '#6ee7b7' : '#fca5a5', fontSize: 12, fontWeight: 700 }}>
-                          {status === 'VALID' ? 'Valid' : 'Review'}
-                        </span>
+                      <span className="document-row-total">{formatCurrency(Number(total ?? 0))}</span>
+                      <span className={`document-status ${status === 'VALID' ? 'is-valid' : 'is-review'}`}>
+                        {status === 'VALID' ? 'Valid' : 'Review'}
+                      </span>
                       </div>
-                    </div>
                   );
                 })
               )}

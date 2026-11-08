@@ -35,6 +35,20 @@ The live analytics smoke check reported 31 total documents and two processing ev
 
 The live OpenAI connectivity test was not run during this verification. It makes an external API request and may be subject to account quota or charges; a previous attempt returned HTTP 429, as described below.
 
+## Node.js backend migration
+
+**Run date:** 2026-11-05
+
+| Command / check | Result |
+|---|---|
+| `npm.cmd --prefix backend test` | **10 passed** |
+| Node syntax checks for backend source | **Passed** |
+| Synthetic PNG through Node OCR | **Invoice number, customer, and total recognized** |
+| Transformers.js semantic embedding smoke test | **384 finite values returned** |
+| `npm.cmd --prefix backend audit --omit=dev` | **0 production dependency vulnerabilities** |
+
+These are focused migration checks. They do not measure Node image/scanned-PDF OCR accuracy or replace the historical Python corpus evaluation above.
+
 ## Full-suite limitation
 
 `python -m pytest -q` does not complete cleanly because `test_openai.py` sends a live request to OpenAI and the request returned HTTP 429 (rate limit/quota). This is an external OpenAI access/quota constraint, not a failure of the local application regression tests. OpenAI indicated that credits may be needed; the precise project billing balance was not independently verified. The 54-test result from the latest verification is from the deterministic application suite `test_app.py`, which does not require a successful live OpenAI request.

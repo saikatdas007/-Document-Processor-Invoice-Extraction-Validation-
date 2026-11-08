@@ -5,19 +5,20 @@
 ```mermaid
 flowchart LR
     Browser["Next.js dashboard<br/>frontend/app"]
-    API["FastAPI API<br/>app.py"]
-    Auth["JWT authentication<br/>in-memory demo users"]
+    API["Express API<br/>backend/src"]
+    Auth["JWT authentication<br/>SQLite accounts"]
     FileStore["uploaded_docs/<br/>uploaded source files"]
     Extract["Text extraction<br/>PDF / image / spreadsheet / text"]
-    OCR["Tesseract OCR<br/>scanned PDF pages and images"]
+    OCR["Tesseract.js OCR<br/>scanned PDF pages and images"]
     OpenAI["OpenAI chat completions<br/>structured extraction"]
-    Local["Local field parser<br/>extractor.py / processor.py"]
-    Validate["Invoice validation<br/>validator.py"]
-    Embed["Sentence Transformers<br/>all-MiniLM-L6-v2"]
+    Local["Local field parser<br/>backend/src/validation.js"]
+    Validate["Invoice validation<br/>backend/src/validation.js"]
+    Embed["Transformers.js<br/>all-MiniLM-L6-v2"]
     MainDB[("documents.db<br/>active API database")]
+    VectorDB[("Qdrant Cloud<br/>optional vector index")]
     OtherDB[("invoices.db<br/>separate SQLAlchemy module")]
 
-    Browser -->|"HTTP JSON + bearer token"| API
+    Browser -->|"HTTP JSON + secure session cookie"| API
     API --> Auth
     API -->|"save upload"| FileStore
     FileStore --> Extract
@@ -30,27 +31,29 @@ flowchart LR
     Local --> Validate
     Validate -->|"document fields and status"| MainDB
     Validate --> Embed
-    Embed -->|"JSON vector"| MainDB
+    Embed -->|"JSON vector cache"| MainDB
+    Embed -. "when configured" .-> VectorDB
     API -->|"processing event"| MainDB
     Browser -->|"search, analytics, export"| API
-    API -->|"query / rank"| MainDB
+    API -->|"local query / rank fallback"| MainDB
+    API -. "vector query" .-> VectorDB
     OtherDB -. "not used by current API routes" .- API
 ```
 
 ### Processing and API flow
 
-1. An admin uploads a supported file through `POST /process` or `POST /api/documents/upload`.
-2. The API saves the upload to `uploaded_docs/` and asks `extract_text_from_file` to read it.
-3. Structured extraction uses OpenAI when available, and local parsing is used when the OpenAI request fails. The local parser also supplements missing or placeholder customer names.
-4. `validator.py` determines whether mandatory invoice fields are present and numerically consistent.
+1. A signed-in user uploads a supported file through `POST /process` or `POST /api/documents/upload`.
+2. The Node API saves the upload to `uploaded_docs/` and extracts its text using PDF.js, Tesseract.js, or the spreadsheet reader.
+3. Structured extraction uses OpenAI when configured, and local parsing is used when the OpenAI request fails. The local parser also supplements missing or placeholder customer names.
+4. `backend/src/validation.js` determines whether mandatory invoice fields are present and numerically consistent.
 5. The API writes the extracted fields to `documents.db`, attempts to create a semantic embedding, and records a processing timestamp.
 6. Authenticated dashboard requests search documents, rank semantic-search results, export CSV, and read analytics.
 
-**Image OCR:** Both upload routes pass PNG/JPG/JPEG files through `extract_text_from_file`, which normalizes contrast, upscales small images by at most 4x, and runs Tesseract OCR. Tesseract must be installed on the API host. In addition to route tests, a real OCR smoke test and five controlled synthetic image conditions were checked; see [test-results.md](test-results.md). These checks do not establish accuracy across all real-world image quality, orientation, or languages.
+**OCR and model downloads:** Tesseract.js obtains English OCR data on first use; Transformers.js obtains the embedding model when semantic indexing/search first runs. Allow outbound downloads or provide persistent caches. The older Python implementation and its image OCR measurements are retained separately; the Node API's automated tests do not establish equivalent OCR accuracy.
 
 ## Active database: `documents.db`
 
-The FastAPI application initializes the following tables in `app.py`.
+The Node API initializes these tables in `backend/src/database.js`. The Python legacy API uses the same primary database schema. If Qdrant is configured, it is the semantic vector index; SQLite retains the vector cache and remains the default when Qdrant is not configured.
 
 ### `documents`
 
@@ -110,7 +113,7 @@ erDiagram
 
 ## Separate SQLAlchemy database: `invoices.db`
 
-`database.py` independently defines a SQLAlchemy `documents` model. Current FastAPI routes use `documents.db`, not this module.
+`database.py` independently defines a SQLAlchemy `documents` model. The current Node API uses `documents.db`, not this module.
 
 | Model field | SQLAlchemy type | Constraints / description |
 |---|---|---|
